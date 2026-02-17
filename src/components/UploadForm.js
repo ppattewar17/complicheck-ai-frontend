@@ -40,12 +40,22 @@ const UploadForm = () => {
       setLoading(true);
       const res = await axios.post(
         `${API_ENDPOINTS.ocrCompliance}/check-compliance-ocr`,
-        formData
+        formData,
+        {
+          timeout: 60000, // 60 seconds timeout
+          headers: {
+            'Content-Type': 'multipart/form-data'
+          }
+        }
       );
       setResult(res.data);
       fetchHistory();
-    } catch {
-      alert("Compliance check failed");
+    } catch (err) {
+      if (err.code === 'ECONNABORTED') {
+        alert("Request timed out. The OCR process takes time on serverless. Please try again or use a smaller image.");
+      } else {
+        alert("Compliance check failed: " + (err.response?.data?.error || err.message));
+      }
     } finally {
       setLoading(false);
     }
