@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import axios from "axios";
+import { API_ENDPOINTS } from "../config/api";
 
 const LiveScan = ({ category, onResult }) => {
   const videoRef = useRef(null);
@@ -129,7 +130,7 @@ const LiveScan = ({ category, onResult }) => {
     formData.append("category", category);
 
     const res = await axios.post(
-      "http://localhost:5000/api/check-compliance-ocr",
+      `${API_ENDPOINTS.ocrCompliance}/check-compliance-ocr`,
       formData
     );
 

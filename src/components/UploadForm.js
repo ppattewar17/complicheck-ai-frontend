@@ -3,6 +3,7 @@ import axios from "axios";
 import ResultCard from "./ResultCard";
 import ComplianceCharts from "./ComplianceCharts";
 import LiveScan from "./LiveScan";
+import { API_ENDPOINTS } from "../config/api";
 
 const UploadForm = () => {
   const [image, setImage] = useState(null);
@@ -11,7 +12,7 @@ const UploadForm = () => {
   const [loading, setLoading] = useState(false);
   const [liveMode, setLiveMode] = useState(false);
 
-  // 🔥 Audit history
+  // Audit history
   const [history, setHistory] = useState([]);
 
   // Fetch audit history on load
@@ -21,7 +22,7 @@ const UploadForm = () => {
 
   const fetchHistory = () => {
     axios
-      .get("http://localhost:5000/api/audit/history")
+      .get(`${API_ENDPOINTS.audit}/history`)
       .then((res) => setHistory(res.data))
       .catch((err) => console.error("History fetch error", err));
   };
@@ -38,7 +39,7 @@ const UploadForm = () => {
     try {
       setLoading(true);
       const res = await axios.post(
-        "http://localhost:5000/api/check-compliance-ocr",
+        `${API_ENDPOINTS.ocrCompliance}/check-compliance-ocr`,
         formData
       );
       setResult(res.data);
