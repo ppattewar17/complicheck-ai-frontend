@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
+import Tesseract from "tesseract.js";
 import ResultCard from "./ResultCard";
 import ComplianceCharts from "./ComplianceCharts";
 import LiveScan from "./LiveScan";
@@ -11,8 +12,8 @@ const UploadForm = () => {
   const [result, setResult] = useState(null);
   const [loading, setLoading] = useState(false);
   const [liveMode, setLiveMode] = useState(false);
+  const [ocrProgress, setOcrProgress] = useState("");
 
-  // Audit history
   const [history, setHistory] = useState([]);
 
   // Fetch audit history on load
@@ -27,37 +28,55 @@ const UploadForm = () => {
       .catch((err) => console.error("History fetch error", err));
   };
 
-  // Normal image upload
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!image) return alert("Please upload an image");
 
-    const formData = new FormData();
-    formData.append("image", image);
-    formData.append("category", category);
-
     try {
       setLoading(true);
-      const res = await axios.post(
-        `${API_ENDPOINTS.ocrCompliance}/check-compliance-ocr`,
-        formData,
+      setOcrProgress("Extracting text from image...");
+
+      // Do OCR in browser
+      const { data: { text } } = await Tesseract.recognize(
+        image,
+        'eng',
         {
-          timeout: 60000, // 60 seconds timeout
-          headers: {
-            'Content-Type': 'multipart/form-data'
+          logger: m => {
+            if (m.status === 'recognizing text') {
+              setOcrProgress(`Recognizing... ${Math.round(m.progress * 100)}%`);
+            }
           }
         }
       );
+
+      const extractedText = text.replace(/\s+/g, ' ').trim();
+      console.log("OCR Result:", extractedText);
+
+      setOcrProgress("Checking compliance...");
+
+      // Send extracted text to backend
+      const res = await axios.post(
+        `${API_ENDPOINTS.compliance}/check-compliance`,
+        {
+          category,
+          extractedText
+        },
+        {
+          timeout: 10000,
+          headers: {
+            'Content-Type': 'application/json'
+          }
+        }
+      );
+
       setResult(res.data);
       fetchHistory();
     } catch (err) {
-      if (err.code === 'ECONNABORTED') {
-        alert("Request timed out. The OCR process takes time on serverless. Please try again or use a smaller image.");
-      } else {
-        alert("Compliance check failed: " + (err.response?.data?.error || err.message));
-      }
+      console.error("Error:", err);
+      alert("Compliance check failed: " + (err.response?.data?.error || err.message));
     } finally {
       setLoading(false);
+      setOcrProgress("");
     }
   };
 
@@ -98,8 +117,8 @@ const UploadForm = () => {
               onChange={(e) => setImage(e.target.files[0])}
             />
 
-            <button style={styles.button} type="submit">
-              {loading ? "Checking..." : "Check Compliance"}
+            <button style={styles.button} type="submit" disabled={loading}>
+              {loading ? ocrProgress || "Processing..." : "Check Compliance"}
             </button>
           </form>
 
